@@ -3,9 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Comment;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
+use App\Http\Requests\CommentRequest;
 
 class CommentController extends Controller
 {
@@ -17,7 +15,7 @@ class CommentController extends Controller
     public function index()
     {
         return response()->json([
-            'data' => DB::table('comments')->get()
+            'data' => Comment::all()->toArray(),
         ]);
     }
 
@@ -27,37 +25,23 @@ class CommentController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\JsonResponse
      */
-    public function store(Request $request)
+    public function store(CommentRequest $request)
     {
-        $parentId = $request->get('parent_id');
-        $parent = $parentId !== null
-            ? Comment::getById($parentId)
+        $validatedData = $request->validated();
+        $parent = $validatedData['parent_id'] !== null
+            ? Comment::find($validatedData['parent_id'])
             : null;
 
-        throw_if(
-            $parent && $parent->isLeaf(),
-            ValidationException::withMessages(['parent' => 'This comment does not accept comments'])
-        );
+        $comment = Comment::store([
+            'name' => $request->get('name'),
+            'level' => $parent ? $parent->level + 1 : Comment::ROOT,
+            'message' => $request->get('message'),
+            'parent_id' => $request->get('parent_id')
+        ]);
 
-        try {
-            $comment = (new \App\Comment)->store([
-                'name' => $request->get('name'),
-                'level' => $parent ? $parent->level + 1 : Comment::ROOT,
-                'message' => $request->get('message'),
-                'parent_id' => $request->get('parent_id')
-            ]);
-
-            $httpCode = 201;
-        } catch (\Error $e) {
-          dd($e);
-        } catch (\Exception $e) {
-            $httpCode = 400;
-            dd($e);
-        } finally {
-            return response()->json([
-                'data' => $comment->toArray() ?? []
-            ], $httpCode);
-        }
+        return response()->json([
+            'data' => $comment->toArray() ?? []
+        ]);
     }
 
     /**
@@ -67,11 +51,24 @@ class CommentController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\JsonResponse
      */
-    public function update(Request $request, Comment $comment)
+    public function update(CommentRequest $request, int $commentId)
     {
+        $comment = Comment::find($commentId);
+        $httpCode = 404;
+
+        if ($comment) {
+            $data = $comment->updateWith($request->validated() + ['updated_at' => now()]);
+
+            $data = [
+                'name' => $data->name,
+                'message' => $data->message
+            ];
+            $httpCode = 204;
+        }
+
         return response()->json([
-            'data' => $comment->updateWith($request->all())->toArray(),
-        ]);
+            'data' => $data ?? [],
+        ], $httpCode);
     }
 
     /**
@@ -80,10 +77,9 @@ class CommentController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Comment $comment)
+    public function destroy(int $commentId)
     {
-        $comment->selfDestroy();
-
+        (Comment::find($commentId))->selfDestroy();
         return response([], 204);
     }
 }

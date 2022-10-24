@@ -2,40 +2,18 @@
 
 namespace App;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
-class Comment extends Model
+class Comment extends WeakModel
 {
     public const LEAF = 3;
     public const ROOT = 1;
 
-    protected $fillable = ['message', 'name', 'parent_id', 'level'];
-
-    public static function getById(int $id): self
-    {
-        $comment = self::baseQuery()->where('id', $id)->first();
-
-        return new self((array)$comment);
-    }
-
-    public function store(array $properties): self
-    {
-        $id = self::baseQuery()->insertGetId([
-            'name' => $properties['name'],
-            'level' => $properties['level'],
-            'message' => $properties['message'],
-            'parent_id' => $properties['parent_id'],
-            'created_at' => now(),
-        ]);
-
-        return self::getById($id);
-    }
+    protected $table = 'comments';
 
     public function updateWith(array $newValues)
     {
         self::baseQuery()->where('id', $this->id)->update($newValues);
-        return self::getById($this->id);
+        return self::find($this->id);
     }
 
     public function selfDestroy(): void
@@ -48,6 +26,11 @@ class Comment extends Model
         return self::baseQuery()->where('parent_id', $this->id)->first();
     }
 
+    public function isLeaf(): bool
+    {
+        return $this->level === self::LEAF;
+    }
+
     /*private function getRoot()
     {
        $root = $this->parent_id ? $this->getParent() : $this;
@@ -58,13 +41,9 @@ class Comment extends Model
        return $root;
     }*/
 
-    public function isLeaf(): bool
-    {
-        return $this->level === self::LEAF;
-    }
 
-    public static function baseQuery()
+    /*public static function baseQuery()
     {
         return DB::table('comments');
-    }
+    }*/
 }

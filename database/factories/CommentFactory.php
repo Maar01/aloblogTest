@@ -1,15 +1,33 @@
 <?php
 
-/** @var \Illuminate\Database\Eloquent\Factory $factory */
+namespace Database\Factories;
 
 use App\Comment;
-use Faker\Generator as Faker;
+use Faker\Factory;
 
-$factory->define(Comment::class, function (Faker $faker) {
-    return [
-        'name' => $faker->name,
-        'level' => 1,
-        'message' => $faker->text(),
-        'parent_id' => null,
-    ];
-});
+class CommentFactory
+{
+    public static function make(array $data= [])
+    {
+        $data = array_merge(self::baseAttributes(), $data);
+        return new Comment($data);
+    }
+
+    public static function create(array $data = [])
+    {
+        $data = array_merge(self::baseAttributes(), $data);
+        return Comment::store($data);
+    }
+
+    public static function baseAttributes(): array
+    {
+        $faker = Factory::create();
+        return [
+            'name' => $faker->name,
+            'level' => 1,
+            'message' => $faker->text(),
+            'parent_id' => null,
+            'created_at' => now()
+        ];
+    }
+}
