@@ -21,9 +21,29 @@ class Comment extends WeakModel
         self::baseQuery()->where('id', $this->id)->delete();
     }
 
-    public function getParent(): self
+    public function getParent(): ?self
     {
-        return self::baseQuery()->where('parent_id', $this->id)->first();
+        return self::find($this->parent_id)->first();
+    }
+
+    public function getComments()
+    {
+        if ($this->isLeaf()) {
+            return [];
+        }
+
+        return self::baseQuery()->where('parent_id', $this->id)->get()->map(function ($record) {
+            return new Comment($record);
+        });
+    }
+
+    public function getTreeComments()
+    {
+        $this->comments = $this->getComments();
+        foreach ($this->comments as $comment)
+        {
+            $comment->getTreeComments();
+        }
     }
 
     public function isLeaf(): bool
@@ -31,19 +51,22 @@ class Comment extends WeakModel
         return $this->level === self::LEAF;
     }
 
-    /*private function getRoot()
+    public static function getRoots()
+    {
+        return self::baseQuery()->where('parent_id', null)->get()->map(function ($rootComment) {
+            $modelComment = new Comment($rootComment);
+            $modelComment->getTreeComments();
+            return $modelComment;
+        });
+    }
+
+   /* private function getRoot()
     {
        $root = $this->parent_id ? $this->getParent() : $this;
-       if ($root) {
+       if ($root->parent_id) {
            $root = $root->getRoot();
        }
 
        return $root;
-    }*/
-
-
-    /*public static function baseQuery()
-    {
-        return DB::table('comments');
     }*/
 }

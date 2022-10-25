@@ -28,6 +28,20 @@ class CommentsTest extends TestCase
         ]);
     }
 
+    public function test_can_get_all_comments_with_sub_comments()
+    {
+        $rootComment = $this->createNestedComments();
+        $response = $this->getJson(route('comments.index'));
+        $response->assertOk();
+        $rootComment->getTreeComments();
+
+        $response->assertJson([
+            'data' => [
+                json_decode($rootComment->toJson(), true)
+            ],
+        ]);
+    }
+
     public function test_store_a_comment()
     {
         $comment = CommentFactory::create();
@@ -78,7 +92,7 @@ class CommentsTest extends TestCase
     public function test_can_not_add_comment_to_non_existing_parent()
     {
         $comment = CommentFactory::make();;
-        $comment->parent_id = 100;//non existing id
+        $comment->parent_id = 100;//non-existing id
         $response = $this->json('POST', route('comments.store'), $comment->toArray());
         $response->assertJsonValidationErrors(['parent_id']);
         $this->assertEquals($response->getStatusCode(), 422);
@@ -102,6 +116,13 @@ class CommentsTest extends TestCase
         $parentComment = $this->createNestedComments();
         $this->deleteJson(route('comments.destroy', $parentComment->id));
         $this->assertEquals(0, Comment::all()->count());
+    }
+
+    public function test_show_comment()
+    {
+        $rootComment = $this->createNestedComments();
+        $response = $this->getJson(route('comments.show', $rootComment->id));
+        $response->assertOk();
     }
 
     private function createNestedComments(int $lvl = 3)

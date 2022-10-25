@@ -15,7 +15,22 @@ class CommentController extends Controller
     public function index()
     {
         return response()->json([
-            'data' => Comment::all()->toArray(),
+            'data' => Comment::getRoots()->toArray(),
+        ]);
+    }
+
+    public function show($commentId)
+    {
+        $comment = Comment::find($commentId);
+        $httpCode = 404;
+        if ($comment) {
+            $comment->getTreeComments();
+            $httpCode = 200;
+        }
+
+
+        return response()->json([
+            'data' => $comment->toArray()
         ]);
     }
 

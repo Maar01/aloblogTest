@@ -5,11 +5,11 @@ namespace App;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
-class WeakModel extends \Illuminate\Support\Fluent
+abstract class WeakModel extends \Illuminate\Support\Fluent
 {
     protected $table;
 
-    protected  function baseQuery()
+    private function baseQuery()
     {
         return DB::table($this->table ?? get_called_class() . 's');
     }
